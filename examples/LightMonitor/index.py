@@ -17,10 +17,10 @@ def handler(event, context):
   event_json = json.loads(event.decode("utf-8"))
   if "payload" in event_json:
     payload_json = json.loads(event_json["payload"])
-    if "illuminance" in payload_json and "value" in payload_json["illuminance"]:
-       illuminance = payload_json["illuminance"]["value"]
-       if illuminance > 500:
+    if "MeasuredIlluminance" in payload_json and "value" in payload_json["MeasuredIlluminance"]:
+       MeasuredIlluminance = payload_json["MeasuredIlluminance"]["value"]
+       if MeasuredIlluminance > 500:
           light_turn(OFF)
-       elif illuminance <= 100:
+       elif MeasuredIlluminance <= 100:
           light_turn(ON)
   return 'hello world'

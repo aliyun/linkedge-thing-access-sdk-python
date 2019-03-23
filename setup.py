@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 
 from setuptools import setup  
+import sys
+
+
+if not (sys.version_info[0] == 3 and sys.version_info[1] == 5 and sys.version_info[2] == 2):
+    sys.exit("Link IoT Edge only support Python 3.5.2")
 
 setup(  
     name = "lethingaccesssdk",

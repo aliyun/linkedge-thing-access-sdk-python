@@ -1,48 +1,85 @@
 # -*- coding: utf-8 -*-
-import lethingaccesssdk
-import time
 import logging
-import os
-import json
+import lethingaccesssdk
+from threading import Timer
 
 
-class Light_Sensor(lethingaccesssdk.ThingCallback):
-  def __init__(self):
-    self.illuminance = 100
+class Light_Sensor(object):
+    def __init__(self):
+      self._illuminance = 200
+      self._delta = 100
+      self._callback = None
 
-  def callService(self, name, input_value):
-    return -1, {}
+    @property
+    def illuminance(self):
+        return self._illuminance
 
-  def getProperties(self, input_value):
-    if input_value[0] == "illuminance":
-      return 0, {input_value[0]: self.illuminance}
-    else:
-      return -1, {}
+    def start(self):
+        illuminance = self._illuminance
+        delta = self._delta
+        if (illuminance >= 600 or illuminance <= 100):
+            delta = -delta;
+        illuminance += delta
+        self._delta = delta
+        self._illuminance = illuminance
+        if self._callback is not None:
+            data = {"properties": illuminance}
+            self._callback(data)
+            t = Timer(2, self.start, ())
+            t.start()
 
-  def setProperties(self, input_value):
-    if "illuminance" in input_value:
-      self.illuminance = input_value["illuminance"]
-      return 0, {}
+    def stop(self):
+        self._callback = None
 
-try:
-  driver_conf = json.loads(os.environ.get("FC_DRIVER_CONFIG"))
-  if "deviceList" in driver_conf and len(driver_conf["deviceList"]) > 0:
-    device_list_conf = driver_conf["deviceList"]
-    config = device_list_conf[0]
-    light_sensor = Light_Sensor()
-    client = lethingaccesssdk.ThingAccessClient(config)
-    client.registerAndonline(light_sensor)
-    while True:
-      time.sleep(1)
-      propertiesDict={"illuminance":light_sensor.illuminance}
-      client.reportProperties(propertiesDict)
-      if light_sensor.illuminance == 600:
-        light_sensor.illuminance = 100
-      else:
-        light_sensor.illuminance = light_sensor.illuminance + 100
-except Exception as e:
-  logging.error(e)
-  
+    def listen(self, callback):
+        if callback is None:
+            self.stop()
+        else:
+            self._callback = callback
+            self.start()
+
+class Connector(lethingaccesssdk.ThingCallback):
+    def __init__(self, config, lightSensor):
+        self.lightSensor = lightSensor
+        self._client = lethingaccesssdk.ThingAccessClient(config)
+
+    def listenCallback(self, data):
+        self._client.reportProperties({'MeasuredIlluminance': data["properties"]})
+
+    def connect(self):
+        self._client.registerAndOnline(self)
+        self.lightSensor.listen(self.listenCallback)
+
+    def disconnect(self):
+        self._client.offline()
+        self.lightSensor.listen(None)
+
+    def callService(self, name, input_value):
+        if name == "yourFunc":
+            #do something
+            return 0, {}
+        return 100001, {}
+
+    def getProperties(self, input_value):
+        retDict = {}
+        if 'MeasuredIlluminance' in input_value:
+            retDict['MeasuredIlluminance'] = self.lightSensor.illuminance
+        return 0, retDict
+
+    def setProperties(self, input_value):
+        logging.error("can't set value")
+        return 100001, {}
+
+infos = lethingaccesssdk.Config().getThingInfos()
+for info in infos:
+    print(info)
+    try:
+        lightSensor = Light_Sensor()
+        connector = Connector(info, lightSensor)
+        connector.connect()
+    except Exception as e:
+        logging.error(e)
+
+# don't remove this function  
 def handler(event, context):
-  
   return 'hello world'

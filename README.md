@@ -14,9 +14,9 @@ The `HelloThing` sample demonstrates you the procedure that connecting things to
 5. Set the driver name `HelloThing` and upload the previous zip file.
 6. Create a product, which owns an property named `temperature`(type of int32), and an event named `high_temperature`(type of int32 and has a input parameter named `temperature` whose type is int32).
 7. Create a device of the product created last step, with name `HelloThing`.
-8. Create a new group and add the Link IoT Edge gateway device into it.
-9. Go to Thing Driver tab and add `HelloThing` driver into that group.
-10. Add the `HelloThing` device into the group. Choose `HelloThing` as its driver.
+8. Create a new instance and add the Link IoT Edge gateway device into it.
+9. Go to Thing Driver tab and add `HelloThing` driver into that instance.
+10. Add the `HelloThing` device into the instance. Choose `HelloThing` as its driver.
 11. Add a *Message Router* with the folowing configuration:
   * Source: `HelloThing` device
   * TopicFilter: Properties.
@@ -31,55 +31,69 @@ Then connect things to Link IoT Edge. The most common use is as follows:
 ``` python
 # -*- coding: utf-8 -*-
 import logging
-import lethingaccesssdk
 import time
-import os
-import json
+import lethingaccesssdk
+from threading import Timer
 
 
-# User need to implement this class
+# Base on device, User need to implement the getProperties, setProperties and callService function.
 class Temperature_device(lethingaccesssdk.ThingCallback):
-  def __init__(self):
-    self.temperature = 41
+    def __init__(self):
+        self.temperature = 41
+        self.humidity = 80
 
-  def callService(self, name, input_value):
-    return -1, {}
+    def getProperties(self, input_value):
+        '''
+        Get properties from the physical thing and return the result.
+        :param input_value:
+        :return:
+        '''
+        retDict = {
+            "temperature": 41,
+            "humidity": 80
+        }
+        return 0, retDict
 
-  def getProperties(self, input_value):
-    if input_value[0] == "temperature":
-      return 0, {input_value[0]: self.temperature}
-    else:
-      return -1, {}
+    def setProperties(self, input_value):
+        '''
+        Set properties to the physical thing and return the result.
+        :param input_value:
+        :return:
+        '''
+        return 0, {}
 
-  def setProperties(self, input_value):
-    if "temperature" in input_value:
-      self.temperature = input_value["temperature"]
-      return 0, {}
+    def callService(self, name, input_value):
+        '''
+        Call services on the physical thing and return the result.
+        :param name:
+        :param input_value:
+        :return:
+        '''
+        return 0, {}
 
-# User define device behavior
-def device_behavior(client, app_callback):
-  while True:
-    time.sleep(2)
-    if app_callback.temperature > 40:
-      client.reportEvent('high_temperature', {'temperature': app_callback.temperature})
-      client.reportProperties({'temperature': app_callback.temperature})
 
-device_obj_dict = {}
+def thing_behavior(client, app_callback):
+    while True:
+        properties = {"temperature": app_callback.temperature,
+                      "humidity": app_callback.humidity}
+        client.reportProperties(properties)
+        client.reportEvent("high_temperature", {"temperature": 41})
+        time.sleep(2)
+
 try:
-  driver_conf = json.loads(os.environ.get("FC_DRIVER_CONFIG"))
-  if "deviceList" in driver_conf and len(driver_conf["deviceList"]) > 0:
-    device_list_conf = driver_conf["deviceList"]
-    config = device_list_conf[0]
-    app_callback = Temperature_device()
-    client = lethingaccesssdk.ThingAccessClient(config)
-    client.registerAndonline(app_callback)
-    device_behavior(client, app_callback)
+    infos = lethingaccesssdk.Config().getThingInfos()
+    for info in infos:
+        app_callback = Temperature_device()
+        client = lethingaccesssdk.ThingAccessClient(info)
+        client.registerAndOnline(app_callback)
+        t = Timer(2, thing_behavior, (client, app_callback))
+        t.start()
 except Exception as e:
-  logging.error(e)
+    logging.error(e)
 
-#don't remove this function
+# don't remove this function
 def handler(event, context):
-  return 'hello world'
+    return 'hello world'
 
 ```
 
@@ -89,6 +103,7 @@ Next follow the [Getting Started](#getting-started---hellothing) to upload and t
 
 The main API references are as follows.
 
+* **[getConfig()](#getConfig)**
 * **[ThingCallback()](#ThingCallback)**
 * ThingCallback#**[setProperties()](#setProperties)**
 * ThingCallback#**[getProperties()](#getProperties)**
@@ -101,6 +116,14 @@ The main API references are as follows.
 * ThingAccessClient#**[online()](#online)**
 * ThingAccessClient#**[offline()](#offline)**
 * ThingAccessClient#**[unregister()](#unregister)**
+* ThingAccessClient#**[cleanup()](#cleanup)**
+* **[Config()](#Config)**
+* Config#**[getThingInfos()](#getThingInfos)**
+
+---
+<a name="getConfig"></a>
+### getConfig()
+return config information under the driver
 
 ---
 <a name="ThingCallback"></a>
@@ -169,9 +192,9 @@ Reports the property values to Link IoT Edge platform.
 * properties`dict`: property values. eg:{"property1": 'xxx', "property2": 'yyy', ...}.
 
 ---
-<a name="gettsl"></a>
+<a name="getTsl"></a>
 ### ThingAccessClient.getTsl()
-Returns the TSL(Thing Specification Language) string.
+Returns the TSL(Thing Specification Language) string`str`.
 
 ---
 
@@ -189,9 +212,29 @@ Informs Link IoT Edge platform that thing is disconnected.
 ### ThingAccessClient.unregister()
 Removes the binding relationship between thing and Link IoT Edge platform. You usually don't call this function.
 
+---
+<a name="cleanup"></a>
+### ThingAccessClient.cleanup()
+Removes the binding relationship between thing and Link IoT Edge platform. You usually don't call this function.
+
+---
+<a name="Config"></a>
+### Config()
+base on current config return config object. 
+
+---
+<a name="getThingInfos"></a>
+### Config. getThingInfos()
+return ThingInfo`List`。
+ThingInfo include：
+
+* productKey `str `: productKey。
+* deviceName `str `: deviceName
+* custom`dict `: custom config
+
 ## License
 ```
-Copyright (c) 2017-present Alibaba Group Holding Ltd.
+Copyright (c) 2017-present Alibaba instance Holding Ltd.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

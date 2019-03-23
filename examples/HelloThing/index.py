@@ -1,51 +1,65 @@
 # -*- coding: utf-8 -*-
 import logging
-import lethingaccesssdk
 import time
-import os
-import json
+import lethingaccesssdk
+from threading import Timer
 
 
-# User need to implement this class
+# Base on device, User need to implement the getProperties, setProperties and callService function.
 class Temperature_device(lethingaccesssdk.ThingCallback):
-  def __init__(self):
-    self.temperature = 41
+    def __init__(self):
+        self.temperature = 41
+        self.humidity = 80
 
-  def callService(self, name, input_value):
-    return -1, {}
+    def getProperties(self, input_value):
+        '''
+        Get properties from the physical thing and return the result.
+        :param input_value:
+        :return:
+        '''
+        retDict = {
+            "temperature": 41,
+            "humidity": 80
+        }
+        return 0, retDict
 
-  def getProperties(self, input_value):
-    if input_value[0] == "temperature":
-      return 0, {input_value[0]: self.temperature}
-    else:
-      return -1
+    def setProperties(self, input_value):
+        '''
+        Set properties to the physical thing and return the result.
+        :param input_value:
+        :return:
+        '''
+        return 0, {}
 
-  def setProperties(self, input_value):
-    if "temperature" in input_value:
-      self.temperature = input_value["temperature"]
-      return 0, {}
+    def callService(self, name, input_value):
+        '''
+        Call services on the physical thing and return the result.
+        :param name:
+        :param input_value:
+        :return:
+        '''
+        return 0, {}
 
-# User define device behavior
-def device_behavior(client, app_callback):
-  while True:
-    time.sleep(2)
-    if app_callback.temperature > 40:
-      client.reportEvent('high_temperature', {'temperature': app_callback.temperature})
-      client.reportProperties({'temperature': app_callback.temperature})
 
-device_obj_dict = {}
+def thing_behavior(client, app_callback):
+    while True:
+        properties = {"temperature": app_callback.temperature,
+                      "humidity": app_callback.humidity}
+        client.reportProperties(properties)
+        client.reportEvent("high_temperature", {"temperature": 41})
+        time.sleep(2)
+
 try:
-  driver_conf = json.loads(os.environ.get("FC_DRIVER_CONFIG"))
-  if "deviceList" in driver_conf and len(driver_conf["deviceList"]) > 0:
-    device_list_conf = driver_conf["deviceList"]
-    config = device_list_conf[0]
-    app_callback = Temperature_device()
-    client = lethingaccesssdk.ThingAccessClient(config)
-    client.registerAndonline(app_callback)
-    device_behavior(client, app_callback)
+    infos = lethingaccesssdk.Config().getThingInfos()
+    for info in infos:
+        app_callback = Temperature_device()
+        client = lethingaccesssdk.ThingAccessClient(info)
+        client.registerAndOnline(app_callback)
+        t = Timer(2, thing_behavior, (client, app_callback))
+        t.start()
 except Exception as e:
-  logging.error(e)
+    logging.error(e)
 
-#don't remove this function
+# don't remove this function
 def handler(event, context):
-  logger = logging.getLogger()
+    return 'hello world'

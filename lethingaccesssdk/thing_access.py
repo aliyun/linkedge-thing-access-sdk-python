@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 #-*- coding:utf-8 -*-
-
-from leda_python import leda
 import os
 import json
 import logging
+from leda_python import leda
 
 
 class ThingCallback(leda.BaseDeviceCallback):
@@ -32,7 +31,7 @@ class ThingCallback(leda.BaseDeviceCallback):
                     ...
                 }
         '''
-        raise exception.LedaCallBackException("callService is empty")
+        raise Exception("callService is empty")
 
     def getProperties(self, input):
         '''
@@ -47,7 +46,7 @@ class ThingCallback(leda.BaseDeviceCallback):
                     ...
                 }
         '''
-        raise exception.LedaCallBackException("getProperties is empty")
+        raise Exception("getProperties is empty")
 
     def setProperties(self, input):
         '''
@@ -62,60 +61,87 @@ class ThingCallback(leda.BaseDeviceCallback):
             code[int]: 若获取成功则返回LEDA_SUCCESS, 失败则返回错误码
             output[dict]: 数据内容自定义，若无返回数据，则值空:{}
         '''
-        raise exception.LedaCallBackException("setProperties is empty")
+        raise Exception("setProperties is empty")
 
 class ThingAccessClient(object):
     '''
     设备接入客户端类，用户主要通过它操作设备上下线和主动上报设备属性或事件
     '''
-    def __init__(self, pk, dn):
+    def __init__(self, config = None):
         '''
         构造函数，使用设备的指定的ProductKey和DeviceName
-        param pk[string]: Product Key
-        param dn[string]: Device Name
         '''
         self._ThingAccess = leda_handler
-        self.pk = pk
-        self.dn = dn
+        if config is not None and isinstance(config, dict):
+            if "productKey" in config and "deviceName" in config:
+                self.pk = config["productKey"]
+                self.dn = config["deviceName"]
+            else:
+                logging.error("config is error")
+                self.pk = None
+                self.dn = None
+        else:
+            logging.error("can't init ThingAccessClient, parameter is error")
+            self.pk = None
+            self.dn = None
         self.device = None
 
     def getTsl(self):
         '''
-        获取云端TSL字符串
+        get tsl string
         return:
             deviceTsl[string]: device TSL
         '''
         try:
-            deviceTsl = self._ThingAccess.getPdInfo(self.pk)
+            deviceTsl = self._ThingAccess.getTSL(self.pk)
         except Exception as e:
             logging.error("get TSL failed")
             return None
         return deviceTsl
 
+    def getTslConfig(self):
+        '''
+        get tsl config string
+        return:
+            deviceTslConfig[string]: device TSL config
+        '''
+        try:
+            deviceTsl = self._ThingAccess.getTSLConfig(self.pk)
+        except Exception as e:
+            logging.error("get TSL Config failed")
+            return None
+        return deviceTsl
+
+    def registerAndOnline(self, callback):
+        '''
+        device online
+        param callback[ThingCallback]: ThingCallback object
+        '''
+        self.registerAndonline(callback)
+
     def registerAndonline(self, callback):
         '''
-        将设备注册到边缘节点中并通知边缘节点上线设备.
-        设备需要注册并上线后, 设备端才能收到云端下发的指令或者发送数据到云端.
+        device online
         param callback[ThingCallback]: ThingCallback object
         '''
         subdevice = None
-        try:
-            subdevice = self._ThingAccess.deviceRegister(self.dn, self.pk, '{}', callback)
-        except Exception as e:
-            logging.error("<><><>register and oneline failed,{}<><><>".format(e.message))
+        if self.dn is None or self.pk is None:
+            logging.error("product key or device name is None")
+            return None
+        subdevice = self._ThingAccess.deviceRegister(self.dn, self.pk, '{}', callback)
         self.device = subdevice
         return subdevice
 
     def unregister(self):
         '''
-        从边缘计算节点移除设备, 请谨慎使用该接口.
+        device unregister
         '''
         if self.device is not None:
             self._ThingAccess.deviceUnregister(self.device)
 
     def online(self):
         '''
-        通知边缘节点设备上线, 该接口一般在设备离线后再次上线时使用.
+        device online
         '''
         if self.device is not None:
             self.device.online()
@@ -124,15 +150,15 @@ class ThingAccessClient(object):
     
     def offline(self):
         '''
-        通知边缘节点设备已离线
+        device offline
         '''
         if self.device is not None:
             self.device.offline()
 
     def reportProperties(self, propertiesDict):
         '''
-        主动上报设备属性
-        param propertiesDict[dict]:上报属性值, eg:
+        report Property
+        param propertiesDict[dict]:report property, eg:
             {
                 'property1':'xxx',
                 'property2':'yyy',
@@ -142,13 +168,13 @@ class ThingAccessClient(object):
         if self.device is not None:
             self.device.reportProperties(propertiesDict)
         else:
-            logging.error("plese register and online firstly\n")
+            logging.error("plese register and online firstly")
     
     def reportEvent(self, eventName, eventDict):
         '''
-        主动上报设备事件
+        report event
         param eventName[string]: Event name
-        param eventDict[dict]: 上报事件值, eg:
+        param eventDict[dict]: report event, eg:
             {
                 "key1": 'xxx',
                 "key2": 'yyy',
@@ -158,8 +184,53 @@ class ThingAccessClient(object):
         if self.device is not None:
             self.device.reportEvent(eventName, eventDict)
         else:
-            logging.error("plese register and online firstly\n")
+            logging.error("plese register and online firstly")
 
+    def cleanup(self):
+        self.offline()
+        del(self)
+
+class Config(object):
+    def __init__(self, config = None):
+        self.config = config
+
+    def getThingInfos(self):
+        return _driverConfig
+
+def getConfig():
+    '''
+    get device list under driver
+    return:
+        deviceList[dict]: device List
+    '''
+    config = {"deviceList":_driverConfig}
+    return json.dumps(config)
+
+_driverConfig = []
 device_name = os.environ.get("FUNCTION_NAME")
 leda_handler = leda.LedaModule()
-leda_handler.moduleInit(device_name)
+if device_name is not None:
+    leda_handler.moduleInit(device_name)
+    try:
+        _config_info = leda_handler.getConfig()
+        configinfo = json.loads(_config_info)
+        if "deviceList" in configinfo:
+            devices = configinfo["deviceList"]
+            for i in range(0, len(devices)):
+                config = {}
+                config['productKey'] = devices[i].get('productKey')
+                pk = config['productKey']
+                config['deviceName'] = devices[i].get('deviceName')
+                dn = config['deviceName']
+                if 'custom' in devices[i]:
+                    config['custom'] = devices[i].get('custom')
+                _driverConfig.append(config)
+    except Exception as e:
+        logging.error("get config failed, %s", e)
+else:
+    logging.error("can't get driver name")
+try:
+    config_env = {"deviceList":_driverConfig}
+    os.environ["FC_DRIVER_CONFIG"] = json.dumps(config_env)
+except Exception as e:
+    logging.error("set env config failed, %s", e)

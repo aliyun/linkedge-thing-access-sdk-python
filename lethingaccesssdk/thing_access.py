@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#-*- coding:utf-8 -*-
+# -*- coding:utf-8 -*-
 import os
 import json
 import logging
@@ -11,6 +11,7 @@ class ThingCallback(leda.BaseDeviceCallback):
     根据真实设备，命名一个类(如Demo_device)继承ThingCallback。
     然后在Demo_device中实现callServiceset, getProperties和setProperties三个函数。
     '''
+
     def callService(self, name, input):
         '''
         调用设备服务函数
@@ -63,11 +64,13 @@ class ThingCallback(leda.BaseDeviceCallback):
         '''
         raise Exception("setProperties is empty")
 
+
 class ThingAccessClient(object):
     '''
     设备接入客户端类，用户主要通过它操作设备上下线和主动上报设备属性或事件
     '''
-    def __init__(self, config = None):
+
+    def __init__(self, config=None):
         '''
         构造函数，使用设备的指定的ProductKey和DeviceName
         '''
@@ -112,12 +115,25 @@ class ThingAccessClient(object):
             return None
         return deviceTsl
 
+    def getTslExtInfo(self):
+        '''
+        get tsl config string
+        return:
+            deviceTslConfig[string]: device TSL config
+        '''
+        try:
+            deviceTsl = self._ThingAccess.getTSLConfig(self.pk)
+        except Exception as e:
+            logging.error("get TSL Config failed")
+            return None
+        return deviceTsl
+
     def registerAndOnline(self, callback):
         '''
         device online
         param callback[ThingCallback]: ThingCallback object
         '''
-        self.registerAndonline(callback)
+        return self.registerAndonline(callback)
 
     def registerAndonline(self, callback):
         '''
@@ -147,7 +163,7 @@ class ThingAccessClient(object):
             self.device.online()
         else:
             logging.error("plese register and online firstly\n")
-    
+
     def offline(self):
         '''
         device offline
@@ -169,7 +185,7 @@ class ThingAccessClient(object):
             self.device.reportProperties(propertiesDict)
         else:
             logging.error("plese register and online firstly")
-    
+
     def reportEvent(self, eventName, eventDict):
         '''
         report event
@@ -188,32 +204,56 @@ class ThingAccessClient(object):
 
     def cleanup(self):
         self.offline()
-        del(self)
+        del (self)
+
 
 class Config(object):
-    def __init__(self, config = None):
+    def __init__(self, config=None):
         self.config = config
 
+    def getDriverInfo(self):
+        '''
+        get global driver info under driver
+        return:
+            driverInfo[dict]: driver Info
+        '''
+        return _driverInfo
+
     def getThingInfos(self):
-        return _driverConfig
+        '''
+        get device list under driver
+        return:
+            Thing infos[dict]: device List
+        '''
+        return _thingInfos
+
 
 def getConfig():
     '''
-    get device list under driver
+    get config under driver
     return:
-        deviceList[dict]: device List
+        config[str]: config
     '''
-    config = {"deviceList":_driverConfig}
+    if _driverInfo is None:
+        config = {"deviceList": _thingInfos}
+    else:
+        config = {
+            "config": _driverInfo,
+            "deviceList": _thingInfos}
     return json.dumps(config)
 
-_driverConfig = []
-device_name = os.environ.get("FUNCTION_NAME")
+
+_thingInfos = []
+_driverInfo = None
+device_name = os.environ.get("FUNCTION_ID")
 leda_handler = leda.LedaModule()
 if device_name is not None:
     leda_handler.moduleInit(device_name)
     try:
         _config_info = leda_handler.getConfig()
         configinfo = json.loads(_config_info)
+        if "config" in configinfo:
+            _driverInfo = configinfo["config"]
         if "deviceList" in configinfo:
             devices = configinfo["deviceList"]
             for i in range(0, len(devices)):
@@ -224,13 +264,13 @@ if device_name is not None:
                 dn = config['deviceName']
                 if 'custom' in devices[i]:
                     config['custom'] = devices[i].get('custom')
-                _driverConfig.append(config)
+                _thingInfos.append(config)
     except Exception as e:
         logging.error("get config failed, %s", e)
 else:
     logging.error("can't get driver name")
 try:
-    config_env = {"deviceList":_driverConfig}
+    config_env = {"deviceList": _thingInfos}
     os.environ["FC_DRIVER_CONFIG"] = json.dumps(config_env)
 except Exception as e:
     logging.error("set env config failed, %s", e)

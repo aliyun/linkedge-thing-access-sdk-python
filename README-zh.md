@@ -34,14 +34,11 @@ import logging
 import time
 import lethingaccesssdk
 from threading import Timer
-
-
 # Base on device, User need to implement the getProperties, setProperties and callService function.
 class Temperature_device(lethingaccesssdk.ThingCallback):
     def __init__(self):
         self.temperature = 41
         self.humidity = 80
-
     def getProperties(self, input_value):
         '''
         Get properties from the physical thing and return the result.
@@ -53,7 +50,6 @@ class Temperature_device(lethingaccesssdk.ThingCallback):
             "humidity": 80
         }
         return 0, retDict
-
     def setProperties(self, input_value):
         '''
         Set properties to the physical thing and return the result.
@@ -61,7 +57,6 @@ class Temperature_device(lethingaccesssdk.ThingCallback):
         :return:
         '''
         return 0, {}
-
     def callService(self, name, input_value):
         '''
         Call services on the physical thing and return the result.
@@ -70,27 +65,23 @@ class Temperature_device(lethingaccesssdk.ThingCallback):
         :return:
         '''
         return 0, {}
-
-
-def thing_behavior(client, app_callback):
+def thing_behavior(client, device):
     while True:
-        properties = {"temperature": app_callback.temperature,
-                      "humidity": app_callback.humidity}
+        properties = {"temperature": device.temperature,
+                      "humidity": device.humidity}
         client.reportProperties(properties)
         client.reportEvent("high_temperature", {"temperature": 41})
         time.sleep(2)
-
 try:
-    infos = lethingaccesssdk.Config().getThingInfos()
-    for info in infos:
-        app_callback = Temperature_device()
-        client = lethingaccesssdk.ThingAccessClient(info)
-        client.registerAndOnline(app_callback)
-        t = Timer(2, thing_behavior, (client, app_callback))
+    thing_config = lethingaccesssdk.Config().getThingInfos()
+    for config in thing_config:
+        device = Temperature_device()
+        client = lethingaccesssdk.ThingAccessClient(config)
+        client.registerAndonline(device)
+        t = Timer(2, thing_behavior, (client, device))
         t.start()
 except Exception as e:
     logging.error(e)
-
 # don't remove this function
 def handler(event, context):
     return 'hello world'
@@ -113,12 +104,14 @@ def handler(event, context):
 * ThingAccessClient#**[reportEvent()](#reportevent)**
 * ThingAccessClient#**[reportProperties()](#reportproperties)**
 * ThingAccessClient#**[getTsl()](#getTsl)**
+* ThingAccessClient#**[getTslExtInfo()](#getTslExtInfo)**
 * ThingAccessClient#**[online()](#online)**
 * ThingAccessClient#**[offline()](#offline)**
 * ThingAccessClient#**[unregister()](#unregister)**
 * ThingAccessClient#**[cleanup()](#cleanup)**
 * **[Config()](#Config)**
 * Config#**[getThingInfos()](#getThingInfos)**
+* Config#**[getDriverInfo()](#getDriverInfo)**
 
 ---
 <a name="getConfig"></a>
@@ -199,6 +192,13 @@ def handler(event, context):
 * 返回TSL字符串`str`。
 
 ---
+<a name="getTslExtInfo"></a>
+### ThingAccessClient. getTslExtInfo()
+获取TSL(Thing Specification Language)扩展信息字符串。
+
+* 返回TSL扩展信息字符串`str`。
+
+---
 
 <a name="online"></a>
 ### ThingAccessClient.online()
@@ -233,6 +233,11 @@ ThingInfo包括如下信息：
 * productKey `str `: 官网申请的productKey。
 * deviceName `str `: 设备名
 * custom`dict `:设备自定义配置
+
+---
+<a name="getDriverInfo"></a>
+### Config. getDriverInfo()
+返回驱动相关信息，返回DriverInfo`List`。
 
 
 ## 许可证

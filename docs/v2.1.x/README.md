@@ -20,7 +20,7 @@ sudo yum install dbus-devel dbus-glib-devel cairo-devel \
   libxml2-devel libxslt-devel
 ```
 
-## 3. 安装python解析器版本 >= 3.5.2
+## 3. 安装python解析器和pip工具，python版本 >= 3.5.2
 
 ## 4. 安装python runtime依赖的第三方库
 ```
@@ -35,3 +35,23 @@ sudo yum install dbus-devel dbus-glib-devel cairo-devel \
 	```
 	export LC_ALL=C
 	```
+
+2. Python.h: No such file or directory 
+
+	```
+	for Ubuntu
+		sudo apt-get install python3-dev
+		
+	for CentOS
+		sudo yum install python3-devel
+	```
+
+3. py3cairo.h: No such file or directory
+
+	查找该文件，一般在这里/usr/local/include/pycairo/
+	
+	```
+	mkdir /usr/include/pycairo
+	cp /usr/local/include/pycairo/py3cairo.h /usr/include/pycairo
+	```
+  

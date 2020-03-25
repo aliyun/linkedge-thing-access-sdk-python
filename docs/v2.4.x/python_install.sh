@@ -17,11 +17,5 @@ PACKAGES=`readlink -f packages`
 PIP3="python3 -m pip --retries 0 --timeout 1 --disable-pip-version-check --trusted-host $PIP3_TRUST_HOST"
 PIP3_INSTALL="$PIP3 install --index-url $PIP3_INDEX_URL -f $PACKAGES"
 
-sudo mkdir -p $PY3_VENV_PATH
-cd $PY3_VENV_PATH
-sudo apt install python3-pip
-sudo python3 -m pip install virtualenv
-sudo python3 -m virtualenv .
-
-sudo sh -c ". bin/activate; $PIP3_INSTALL -r $REQUIREMENTS"
+sudo sh -c "$PIP3_INSTALL -r $REQUIREMENTS"
 

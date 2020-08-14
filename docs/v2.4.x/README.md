@@ -21,6 +21,23 @@ sudo yum install dbus-devel dbus-glib-devel cairo-devel \
 ```
 
 ## 3. 安装python解析器和pip工具，python版本 >= 3.5.2
+输入下述命令，确认是否已经安装了python3环境
+```
+python3 -V
+```
+如果已经存在python3环境则直接进入步骤4，否则继续以下步骤
+
+### 3.1. Ubuntu
+```
+sudo apt-get update
+sudo apt-get install python3
+```
+
+### 3.2. CentOS
+```
+sudo yum update
+sudo yum install python3
+```
 
 ## 4. 安装python runtime依赖的第三方库
 ```

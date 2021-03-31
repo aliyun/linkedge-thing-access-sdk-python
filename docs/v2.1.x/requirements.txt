@@ -5,7 +5,7 @@ pymodbus==2.1.0
 ws4py==0.5.1
 virtualenv==15.1.0
 six==1.11.0
-lxml==4.3.4
+lxml==4.6.3
 pyserial==3.4
 python-dateutil==2.7.2
 pytz==2018.3

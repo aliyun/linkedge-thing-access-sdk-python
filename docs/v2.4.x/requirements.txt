@@ -3,7 +3,7 @@ monotonic==1.4
 opcua==0.98.9
 pymodbus==2.1.0
 ws4py==0.5.1
-virtualenv==15.1.0
+virtualenv==20.26.6
 six==1.11.0
 lxml==4.3.4
 pyserial==3.4
